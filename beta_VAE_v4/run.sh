@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 export TORCH_HOME=/tmp/torch_cache
+export VISDOM_STATIC_PATH=/usr/local/lib/python3.10/dist-packages/visdom/static
 
-# 1) Launch Visdom server in background, serving from our vendored copy
-python3 -m visdom.server \
-  --port 8097 \
-  --hostname 0.0.0.0 \
-  --static-path "/usr/local/lib/python3.10/dist-packages/visdom/static" \
+# start Visdom in the background, serving from your vendored assets
+nohup python3 -m visdom.server \
+     --port 8097 \
+     --hostname 0.0.0.0 \
+     --static-path "$VISDOM_STATIC_PATH" \
   > visdom.log 2>&1 &
 
-# 2) Give it a moment, then start training
 sleep 2
 
 # 3) finally, run your training script

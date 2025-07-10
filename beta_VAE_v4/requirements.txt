@@ -5,3 +5,4 @@ visdom
 pillow
 numpy
 scipy
+tensorboard
