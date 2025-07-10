@@ -3,45 +3,32 @@
 FROM nvcr.io/nvidia/jax:23.08-py3
 WORKDIR /workspace
 
-################################################################################
-# 2. Install your code’s dependencies, including visdom, via pip
-#    (This runs as root inside the image build, so it's allowed.)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# requirements.txt should include:
-# torch==0.3.1.post2
-# torchvision
-# tqdm
-# visdom
-# pillow
-# numpy
-# scipy
+RUN pip install --no-cache-dir visdom
+RUN mkdir -p /workspace/visdom_static
 
-################################################################################
-# 3. Pre-create Visdom’s “static/fonts” directory *and* make it world-writable
-#    so that the non-root user inside the container can write there at runtime.
-#    We first discover where pip put visdom, then patch its static folder.
+RUN python3 - << 'EOF'
+from visdom.server.build import download_scripts
+download_scripts(proxies=None, install_dir="/workspace/visdom_static")
+EOF
 
-# install visdom, then dynamically discover where it lives
-RUN pip install --no-cache-dir visdom && \
-    VIS_PATH="$(python3 -c "import visdom, os; print(os.path.join(os.path.dirname(visdom.__file__), 'static'))")" && \
-    mkdir -p "$VIS_PATH/fonts" && \
-    chmod -R a+rwX "$VIS_PATH"
+RUN mkdir -p /usr/local/lib/python3.10/dist-packages/visdom/static \
+    && cp -r /workspace/visdom_static/* /usr/local/lib/python3.10/dist-packages/visdom/static/
 
 
-################################################################################
-# 4. Copy your code & entrypoint script
-COPY . /workspace
-# ensure your run.sh is executable
+# ─────────── VENDOR VISDOM STATIC ASSETS HERE ───────────
+COPY visdom_static /usr/local/lib/python3.10/dist-packages/visdom/static
+ENV VISDOM_STATIC_PATH=/usr/local/lib/python3.10/dist-packages/visdom/static
+# ──────────────────────────────────────────────────────────
+
+RUN chmod -R a+rX /usr/local/lib/python3.10/dist-packages/visdom/static
+
+# Bring in your run.sh and code
+COPY run.sh /workspace/run.sh
 RUN chmod +x /workspace/run.sh
+COPY . /workspace
 
-# Expose Visdom’s port
 EXPOSE 8097
-
-################################################################################
-# 5. Default command: launch your run script, which itself starts Visdom + main.py
-ENTRYPOINT ["bash", "run.sh"]
-
-# Ensure Visdom’s static folder is world-writable
-RUN chmod -R a+rwX /usr/local/lib/python3.10/dist-packages/visdom/static
+ENTRYPOINT ["bash","run.sh"]
