@@ -6,3 +6,6 @@ pillow
 numpy
 scipy
 tensorboard
+matplotlib
+scikit-learn
+xarray
